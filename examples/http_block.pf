@@ -1,0 +1,5 @@
+# Block plain HTTP, drop a noisy host, allow DNS, accept everything else.
+if dst_port == 80 and proto == TCP: drop
+if src_ip == 192.168.1.5: drop
+if proto == UDP and dst_port == 53: accept
+default: accept
