@@ -5,16 +5,16 @@ planned real-time OpenGL visual debugger and ARM64 JIT.
 
 ```
 filter source (.pf)
-      │  Lexer            [PROVIDED — reference implementation]
+      │  Lexer            
       ▼
    tokens
-      │  Parser           [Stage 2 — you]
+      │  Parser           [Stage 2 - in progress]
       ▼
     AST
-      │  Codegen          [Stage 3 — you]
+      │  Codegen          [Stage 3 — in progress]
       ▼
-  bytecode  ──►  optimize()   [Stage 5 — you]
-      │  VM                [Stage 4 — you]
+  bytecode  ──►  optimize()   [Stage 5 — in progress]
+      │  VM                [Stage 4 — in progress]
       ▼
  ACCEPT / DROP per packet
 ```
