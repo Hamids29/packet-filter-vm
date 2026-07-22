@@ -86,7 +86,7 @@ Show interpreted-vs-JIT timing side by side.
   instruction sequences — so you can refactor codegen freely.
 - Add a test whenever you find a bug. That habit is the whole secret.
 
-## Design decisions worth being able to defend (interview prep)
+## Design decisions worth being able to defend (for myself m still learning if anyones watching oo9 )
 
 - Why fixed-size instructions? (decode simplicity, visualizer layout, JIT
   translation is 1:1 friendly)
