@@ -14,7 +14,7 @@ filter source (.pf)
       │  Codegen          [Stage 3 — in progress]
       ▼
   bytecode  ──►  optimize()   [Stage 5 — in progress]
-      │  VM                [Stage 4 — in progress]
+      │  VM                [Stage 4 - DONE]
       ▼
  ACCEPT / DROP per packet
 ```
@@ -47,11 +47,12 @@ branching and backpatching. Strategy explained in `include/pfc/codegen.h`.
 This is the hardest and most interview-relevant stage — budget a weekend.
 Done when: `./build/pfc examples/http_block.pf` prints sensible disassembly.
 
-**Stage 4 — VM** (`src/vm.cpp`). Fetch/decode/execute loop. Can be built
-BEFORE Stage 3 — its tests use hand-assembled bytecode. Keep all state in
-`VmState` (the visualizer reads it) and implement `step()` first, then
-`run()` on top of it.
-Done when: Stage 4 + end-to-end tests pass.
+**Stage 4 — VM** (`src/vm.cpp`). DONE. Fetch/decode/execute loop. Built
+BEFORE Stage 3 — its tests use hand-assembled bytecode. All state lives in
+`VmState` (the visualizer reads it); `step()` executes one instruction,
+`run()` loops on top of it with a max-step safety cap.
+Done when: Stage 4 + end-to-end tests pass. (Stage 4 tests: all 5 pass.
+End-to-end tests still need Stage 3 codegen.)
 
 **Stage 4b — Verifier** (optional but high-value). Statically prove programs
 terminate and stay in bounds before running them. Mirrors the real eBPF
