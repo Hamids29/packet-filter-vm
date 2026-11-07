@@ -186,6 +186,57 @@ int main() {
     });
 
     // ------------------------------------------------------------------
+    std::cout << "\n== Stage 4b: verifier ==\n";
+    // ------------------------------------------------------------------
+    run_test("verifier accepts a well-formed program", [] {
+        Program p = {
+            {Opcode::LD_ABS_H, 0, 0, 0, field_offsets::L4_DSTPORT},
+            {Opcode::JEQ_IMM,  0, 0, 1, 80},
+            {Opcode::RET,      0, 0, 0, 1},
+            {Opcode::RET,      0, 0, 0, 0},
+        };
+        std::string err;
+        CHECK(VM::verify(p, err));
+    });
+    run_test("verifier rejects backward jumps (loops)", [] {
+        Program p = {{Opcode::JMP, 0, 0, -1, 0}};  // jumps to itself
+        std::string err;
+        CHECK(!VM::verify(p, err));
+        CHECK(!err.empty());
+    });
+    run_test("verifier rejects out-of-bounds jump targets", [] {
+        Program p = {
+            {Opcode::JMP, 0, 0, 100, 0},
+            {Opcode::RET, 0, 0, 0, 1},
+        };
+        std::string err;
+        CHECK(!VM::verify(p, err));
+    });
+    run_test("verifier rejects register read before write", [] {
+        Program p = {
+            {Opcode::MOV_REG, 0, 1, 0, 0},  // reads r1, never written
+            {Opcode::RET,     0, 0, 0, 1},
+        };
+        std::string err;
+        CHECK(!VM::verify(p, err));
+    });
+    run_test("verifier rejects a path that never reaches RET", [] {
+        Program p = {{Opcode::MOV_IMM, 0, 0, 0, 1}};  // falls off the end
+        std::string err;
+        CHECK(!VM::verify(p, err));
+    });
+    run_test("verifier accepts every program codegen produces", [] {
+        const std::string src =
+            "if dst_port == 80 and proto == TCP: drop\n"
+            "if src_ip == 192.168.1.5: drop\n"
+            "if proto == UDP and dst_port == 53: accept\n"
+            "default: accept";
+        auto ast = Parser(Lexer(src).tokenize()).parse();
+        std::string err;
+        CHECK(VM::verify(Codegen().compile(ast), err));
+    });
+
+    // ------------------------------------------------------------------
     std::cout << "\n== Stages 2+3+4: end-to-end (source -> verdict) ==\n";
     // ------------------------------------------------------------------
     run_test("e2e: block HTTP, allow HTTPS", [] {
@@ -219,6 +270,49 @@ int main() {
             "default: drop";
         PacketSpec tcp80;  // TCP AND port 80 -> first rule wins -> accept
         CHECK(compile_and_run(src, tcp80) == Verdict::ACCEPT);
+    });
+
+    // ------------------------------------------------------------------
+    std::cout << "\n== Stage 5: optimizer ==\n";
+    // ------------------------------------------------------------------
+    run_test("optimize() never changes behavior", [] {
+        const std::string src =
+            "if proto == UDP or proto == ICMP: drop\ndefault: accept";
+        auto ast = Parser(Lexer(src).tokenize()).parse();
+        auto raw = Codegen().compile(ast);
+        auto opt = optimize(raw);
+        CHECK(opt.size() <= raw.size());
+
+        PacketSpec udp_spec; udp_spec.proto = 17;
+        PacketSpec tcp_spec; tcp_spec.proto = 6;
+        auto udp_pkt = build_packet(udp_spec);
+        auto tcp_pkt = build_packet(tcp_spec);
+        VM vm_udp(opt, udp_pkt.data(), udp_pkt.size());
+        VM vm_tcp(opt, tcp_pkt.data(), tcp_pkt.size());
+        CHECK(vm_udp.run() == Verdict::DROP);
+        CHECK(vm_tcp.run() == Verdict::ACCEPT);
+    });
+    run_test("optimize() eliminates a redundant reload of the same field", [] {
+        // "proto == UDP or proto == ICMP" loads `proto` twice in a row with
+        // nothing but a zero-offset jump in between -> redundant-load
+        // elimination should drop the second load (and then dead-code
+        // elimination tidies up what's left).
+        const std::string src =
+            "if proto == UDP or proto == ICMP: drop\ndefault: accept";
+        auto ast = Parser(Lexer(src).tokenize()).parse();
+        auto raw = Codegen().compile(ast);
+        auto opt = optimize(raw);
+        CHECK(opt.size() < raw.size());
+    });
+    run_test("optimize() keeps the program verifier-clean", [] {
+        const std::string src =
+            "if dst_port == 80 and proto == TCP: drop\n"
+            "if src_ip == 192.168.1.5: drop\n"
+            "default: accept";
+        auto ast = Parser(Lexer(src).tokenize()).parse();
+        auto opt = optimize(Codegen().compile(ast));
+        std::string err;
+        CHECK(VM::verify(opt, err));
     });
 
     // ------------------------------------------------------------------

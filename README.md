@@ -11,9 +11,9 @@ filter source (.pf)
       │  Parser           [Stage 2 - DONE]
       ▼
     AST
-      │  Codegen          [Stage 3 — in progress]
+      │  Codegen          [Stage 3 - DONE]
       ▼
-  bytecode  ──►  optimize()   [Stage 5 — in progress]
+  bytecode  ──►  optimize()   [Stage 5 - DONE]
       │  VM                [Stage 4 - DONE]
       ▼
  ACCEPT / DROP per packet
@@ -42,10 +42,12 @@ per grammar production. Grammar spec is in `include/pfc/ast.h`; implementation
 walkthrough is in the comment block at the top of `parser.cpp`.
 Done when: all Stage 2 tests pass. (All 5 pass.)
 
-**Stage 3 — Codegen** (`src/codegen.cpp`). AST -> bytecode with short-circuit
-branching and backpatching. Strategy explained in `include/pfc/codegen.h`.
-This is the hardest and most interview-relevant stage — budget a weekend.
-Done when: `./build/pfc examples/http_block.pf` prints sensible disassembly.
+**Stage 3 — Codegen** (`src/codegen.cpp`). DONE. AST -> bytecode with
+short-circuit branching and backpatching. Strategy explained in
+`include/pfc/codegen.h`. This is the hardest and most interview-relevant
+stage. Done when: `./build/pfc examples/http_block.pf` prints sensible
+disassembly. (It does — matches the worked example in the header exactly
+for rule 1.)
 
 **Stage 4 — VM** (`src/vm.cpp`). DONE. Fetch/decode/execute loop. Built
 BEFORE Stage 3 — its tests use hand-assembled bytecode. All state lives in
@@ -54,14 +56,19 @@ BEFORE Stage 3 — its tests use hand-assembled bytecode. All state lives in
 Done when: Stage 4 + end-to-end tests pass. (Stage 4 tests: all 5 pass.
 End-to-end tests still need Stage 3 codegen.)
 
-**Stage 4b — Verifier** (optional but high-value). Statically prove programs
-terminate and stay in bounds before running them. Mirrors the real eBPF
-verifier's core job. See the comment in `include/pfc/vm.h`.
+**Stage 4b — Verifier.** DONE (`VM::verify` in `src/vm.cpp`). Statically
+proves programs terminate (no backward jumps), stay in register/jump
+bounds, read registers only after they're written, and end every reachable
+path in RET. Mirrors the real eBPF verifier's core job. See the comment in
+`include/pfc/vm.h`.
 
-**Stage 5 — Optimization passes** (`optimize()` in codegen.cpp — currently
-the identity function). Redundant-load elimination, jump threading, dead code
-elimination. Pass ideas + difficulty ranking in `include/pfc/codegen.h`.
-Track before/after instruction counts — that's your demo metric.
+**Stage 5 — Optimization passes.** DONE (`optimize()` in `src/codegen.cpp`).
+Three passes, chained: redundant-load elimination (dataflow over the
+loop-free CFG — same forward-scan trick as the verifier), jump threading,
+dead code elimination. Pass ideas + difficulty ranking in
+`include/pfc/codegen.h`. The test suite's "Stage 5: optimizer" section
+checks behavior is preserved and that the http_block.pf-style OR chain
+actually shrinks.
 
 **Stage 6 — OpenGL visualizer.** New executable driving `VM::step()` frame by
 frame: instruction list with PC highlight, register panel, packet-byte hex

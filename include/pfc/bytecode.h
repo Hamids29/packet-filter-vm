@@ -87,6 +87,11 @@ namespace field_offsets {
     constexpr int32_t IP_DST     = 30;  // 4 bytes
     constexpr int32_t L4_SRCPORT = 34;  // 2 bytes
     constexpr int32_t L4_DSTPORT = 36;  // 2 bytes
+
+    // Pseudo-offset for Field::SIZE: there's no byte range to read, so
+    // LD_ABS_W with imm == PACKET_SIZE is a sentinel the VM special-cases
+    // to mean "load the packet's total length" instead of reading bytes.
+    constexpr int32_t PACKET_SIZE = -1;
 }
 
 namespace proto_numbers {

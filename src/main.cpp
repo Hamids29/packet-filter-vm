@@ -88,6 +88,15 @@ int main(int argc, char** argv) {
         return 0;
     }
 
+    // --- Stage 4b: verify (yours) before ever running it against a packet ---
+    std::string verify_err;
+    if (VM::verify(prog, verify_err)) {
+        std::cout << "\n=== VERIFIER ===\n  OK: statically proven to terminate and stay in bounds\n";
+    } else {
+        std::cout << "\n=== VERIFIER ===\n  REJECTED: " << verify_err << "\n";
+        return 1;
+    }
+
     // --- Stage 4: execute (yours) against three synthetic packets ---
     struct { const char* desc; PacketSpec spec; } samples[] = {
         {"TCP  10.0.0.1:12345 -> 10.0.0.2:80  (HTTP)", {}},

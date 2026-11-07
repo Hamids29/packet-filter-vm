@@ -15,6 +15,7 @@
 #include "bytecode.h"
 #include <array>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace pfc {
@@ -51,15 +52,19 @@ public:
 
     const VmState& state() const { return state_; }
 
-    // TODO(you), Stage 4b (recommended, great interview story): a VERIFIER.
-    //   static bool verify(const Program& p, std::string& err);
-    // Statically prove before execution that:
-    //   - every jump target is in bounds
-    //   - every code path ends in RET
-    //   - no backward jumps (=> no loops => guaranteed termination)
-    //   - register reads happen only after writes (r0 after a load is fine)
-    // This mirrors the real eBPF verifier's core job and is exactly the
-    // "safety at the hardware/software boundary" story from the JD.
+    // Stage 4b verifier. Statically proves, before any packet is ever run,
+    // that a program:
+    //   - uses only valid register indices
+    //   - has every jump target in bounds
+    //   - has no backward jumps (=> no loops => guaranteed termination)
+    //   - reads registers only after they're written (r0 after a load is fine)
+    //   - ends every reachable path in RET with a valid verdict immediate
+    // This mirrors the real eBPF verifier's core job: prove safety statically
+    // so the interpreter doesn't have to guard against runaway programs.
+    // Deliberately independent of any specific packet — packet-bounds safety
+    // is the VM's runtime job (see step()'s bounds_check_load); the verifier
+    // proves structural properties of the bytecode itself.
+    static bool verify(const Program& p, std::string& err);
 
 private:
     // Helpers you'll want:
